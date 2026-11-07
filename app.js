@@ -82,6 +82,11 @@ const ROUTES = {
     title: "Vault notes",
     eyebrow: "NavalFireVR / Knowledge base",
     sub: "Every note in the NavalVault Obsidian vault, mirrored here by the vault sync."
+  },
+  plan: {
+    title: "Completion plan",
+    eyebrow: "NavalFireVR / Delivery",
+    sub: "What must be true before the project is finished: a complete fire-suppression scenario in all 42 role × fire-class routes, with the player leading an AI équipe."
   }
 };
 
@@ -352,7 +357,8 @@ function syncNav() {
     interactions: state.interactions.length,
     graphics: state.graphics.groups.reduce((n, g) => n + g.items.length, 0),
     tasks: c.openTasks,
-    vault: vaultNotes().length
+    vault: vaultNotes().length,
+    plan: planCounts().open
   };
 
   document.querySelectorAll("[data-count]").forEach((node) => {
@@ -568,6 +574,36 @@ function viewOverview() {
           <div class="compare-cell"><div class="micro">Performance budget</div>${chip(state.decisions.perfBudget.value)}</div>
         </div>
         <div class="constraint-box">${esc(compare.constraint)}</div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-bottom:18px">
+      <div class="card-head">
+        <div>
+          <h2>Completion plan</h2>
+          <p>${(() => {
+            const pc = planCounts();
+            return `${pc.done} of ${pc.total} tasks done · 42 role × fire-class scenarios`;
+          })()}</p>
+        </div>
+        <button class="btn btn--sm" data-act="go" data-route="plan">Open plan</button>
+      </div>
+      <div class="card-body">
+        <div class="kpi-bar"><i style="width:${pct(planCounts().done, planCounts().total)}%"></i></div>
+        <div class="mini-list" style="margin-top:10px">
+          ${(planData() ? planData().phases.flatMap((phase) => phase.tasks) : [])
+            .filter((task) => task.status !== "Done")
+            .slice(0, 4)
+            .map(
+              (task) => `
+            <div class="mini-row">
+              <span class="title">${esc(task.title)}</span>
+              <span class="micro" style="letter-spacing:.06em">${esc(task.area)}</span>
+              ${chip(task.status)}
+            </div>`
+            )
+            .join("")}
+        </div>
       </div>
     </section>
 
@@ -1334,6 +1370,162 @@ function viewVault() {
     </div>`;
 }
 
+/* ------------------------------------------------------------------ */
+/* Completion plan                                                     */
+/* ------------------------------------------------------------------ */
+
+const PLAN_STATUSES = ["Not started", "Planned", "In progress", "Blocked", "Done"];
+const PLAN_GLYPH = {
+  "Not started": "·",
+  "Planned": "P",
+  "In progress": "IP",
+  "Blocked": "B",
+  "Done": "✓"
+};
+
+function planData() {
+  return state.plan && Array.isArray(state.plan.phases) ? state.plan : null;
+}
+
+function planCounts() {
+  const plan = planData();
+  if (!plan) return { total: 0, done: 0, active: 0, blocked: 0, open: 0 };
+  const tasks = plan.phases.flatMap((phase) => phase.tasks);
+  const done = tasks.filter((task) => task.status === "Done").length;
+  const active = tasks.filter((task) => task.status === "In progress").length;
+  const blocked = tasks.filter((task) => task.status === "Blocked").length;
+  return { total: tasks.length, done, active, blocked, open: tasks.length - done };
+}
+
+function phaseProgress(phase) {
+  const done = phase.tasks.filter((task) => task.status === "Done").length;
+  return { done, total: phase.tasks.length, pct: pct(done, phase.tasks.length) };
+}
+
+function matrixStatus(role, klass) {
+  const map = state.plan?.matrix?.status || {};
+  return map[`${role}|${klass}`] || "Not started";
+}
+
+function cycleMatrix(role, klass) {
+  if (!state.plan?.matrix) return;
+  const key = `${role}|${klass}`;
+  const order = PLAN_STATUSES;
+  const current = state.plan.matrix.status[key] || "Not started";
+  state.plan.matrix.status[key] = order[(order.indexOf(current) + 1) % order.length];
+  persist(true);
+  render();
+}
+
+function viewPlan() {
+  const plan = planData();
+  if (!plan) {
+    return `<section class="card"><div class="card-body empty">No plan data found. Restore <code>data.js</code> or reset the dashboard.</div></section>`;
+  }
+
+  const c = planCounts();
+  const overall = pct(c.done, c.total);
+
+  const matrixRows = plan.matrix.roles
+    .map((role) => {
+      const cells = plan.matrix.classes
+        .map((klass) => {
+          const status = matrixStatus(role, klass);
+          const cls = STATUS_CLASS[status] || "notstarted";
+          return `<td><button class="mx mx--${cls}" data-act="matrix-cycle" data-role="${esc(role)}" data-class="${esc(
+            klass
+          )}" title="${esc(`${role} × Classe ${klass} — ${status}`)}">${PLAN_GLYPH[status] || "·"}</button></td>`;
+        })
+        .join("");
+      return `<tr><th scope="row"><span class="mx-role">${esc(role)}</span><span class="mx-duty">${esc(
+        plan.matrix.roleDuties[role] || ""
+      )}</span></th>${cells}</tr>`;
+    })
+    .join("");
+
+  const phases = plan.phases
+    .map((phase, pi) => {
+      const progress = phaseProgress(phase);
+      const tasks = phase.tasks
+        .map((task, ti) => `
+          <div class="ptask">
+            ${statusSelect(`plan.phases.${pi}.tasks.${ti}.status`, PLAN_STATUSES, task.status)}
+            <div class="ptask-main">
+              <div class="ptask-title">${esc(task.title)}</div>
+              <div class="ptask-detail">${esc(task.detail)}</div>
+            </div>
+            <span class="ptask-area">${esc(task.area)}</span>
+            <span class="ptask-source">${esc(task.source)}</span>
+          </div>`)
+        .join("");
+
+      return `
+        <section class="card phase">
+          <div class="card-head">
+            <div>
+              <h2>${esc(phase.title)}</h2>
+              <p>${esc(phase.summary)}</p>
+            </div>
+            <div class="phase-progress">
+              <div class="phase-bar"><i style="width:${progress.pct}%"></i></div>
+              <span>${progress.done}/${progress.total}</span>
+            </div>
+          </div>
+          <div class="card-body tight"><div class="ptasks">${tasks}</div></div>
+        </section>`;
+    })
+    .join("");
+
+  return `
+    <section class="card plan-goal">
+      <div class="card-body">
+        <div class="micro">End-of-project goal</div>
+        <p class="plan-goal-text">${esc(plan.goal)}</p>
+        <div class="plan-stats">
+          <div><b>${c.total}</b><span>tasks</span></div>
+          <div><b>${c.done}</b><span>done</span></div>
+          <div><b>${c.active}</b><span>in progress</span></div>
+          <div><b>${c.blocked}</b><span>blocked</span></div>
+          <div><b>${plan.matrix.roles.length * plan.matrix.classes.length}</b><span>scenarios</span></div>
+        </div>
+        <div class="kpi-bar" style="margin-top:12px"><i style="width:${overall}%"></i></div>
+        <div class="micro" style="margin-top:6px">${overall}% of plan tasks complete</div>
+        <ul class="dod">
+          <li><strong>Definition of done</strong> — the project is finished only when all of these hold:</li>
+          ${plan.definitionOfDone.map((line) => `<li>${esc(line)}</li>`).join("")}
+        </ul>
+      </div>
+    </section>
+
+    <section class="card" style="margin-bottom:18px">
+      <div class="card-head">
+        <div>
+          <h2>Scenario matrix — 42 routes</h2>
+          <p>7 roles × 6 fire classes. Click a cell to cycle its state.</p>
+        </div>
+        <div class="mx-legend">
+          ${PLAN_STATUSES.map(
+            (status) =>
+              `<span class="mx-key mx-key--${STATUS_CLASS[status] || "notstarted"}" title="${esc(status)}">${PLAN_GLYPH[status]}</span>`
+          ).join("")}
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="matrix">
+          <thead>
+            <tr>
+              <th>Role <span class="th-sub">duty and source</span></th>
+              ${plan.matrix.classes.map((klass) => `<th class="mx-class">Classe ${esc(klass)}</th>`).join("")}
+            </tr>
+          </thead>
+          <tbody>${matrixRows}</tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="phase-stack">${phases}</div>`;
+}
+
 const VIEWS = {
   overview: viewOverview,
   roadmap: viewRoadmap,
@@ -1342,7 +1534,8 @@ const VIEWS = {
   interactions: viewInteractions,
   graphics: viewGraphics,
   tasks: viewTasks,
-  vault: viewVault
+  vault: viewVault,
+  plan: viewPlan
 };
 
 /* ------------------------------------------------------------------ */
@@ -1742,6 +1935,8 @@ document.addEventListener("click", (event) => {
   } else if (act === "vault-tag") {
     vaultTag = vaultTag === target.dataset.tag ? null : target.dataset.tag;
     render();
+  } else if (act === "matrix-cycle") {
+    cycleMatrix(target.dataset.role, target.dataset.class);
   } else if (act === "env-toggle") {
     toggleEnvironment(target.dataset.id);
   } else if (act === "locker-item-add") {

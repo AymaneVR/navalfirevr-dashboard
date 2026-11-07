@@ -36,6 +36,7 @@ python -m http.server 8000
 | **VR interactions** | Planning board grouped by status: Planned, Designing, Ready to implement, In progress, Done. |
 | **Graphics & headset** | Desktop checks, standalone checks, future VR evaluation, and the headset/deployment/budget comparison. |
 | **Codex tasks** | Reusable task tracker with search, filters, sorting, and a detail editor. |
+| **Completion plan** | The 10-phase, 59-task route to finishing the project: 42 role × fire-class scenarios, player-led AI équipes, an interactive 42-cell scenario matrix, and a definition of done. |
 | **Vault notes** | Every note from the `NavalVault` Obsidian vault, searchable, with rendered Markdown, wikilinks, backlinks, and an "Open in Obsidian" link. |
 
 ### Deliberate caveats

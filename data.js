@@ -150,54 +150,57 @@ const SEED = {
       id: "lk-tpb",
       code: "TPB",
       state: "Placed and saved",
-      note: "Locker and equipment actors placed and saved. Item names below are placeholders — rename to match the actual actors.",
-      limitation: "Pickup and equip interactions remain future work. No Play/VR test of the repaired installation is recorded.",
+      note: "LOCAL INCENDIE, aft starboard, green band. Wardrobe actors placed and saved; 7 equipment items labelled.",
+      limitation: "Pickup and equip interactions remain future work. No Play/VR test of the repaired installation is recorded, so readiness stays Unknown.",
       items: [
-        { id: "tpb-1", name: "Protective jacket", qty: "1", readiness: "Ready", interaction: "Pending", priority: "Normal", notes: "" },
-        { id: "tpb-2", name: "Protective trousers", qty: "1", readiness: "Ready", interaction: "Pending", priority: "Normal", notes: "" },
-        { id: "tpb-3", name: "Helmet", qty: "1", readiness: "Ready", interaction: "Pending", priority: "Normal", notes: "" },
-        { id: "tpb-4", name: "Gloves", qty: "1 pair", readiness: "Ready", interaction: "Pending", priority: "Normal", notes: "" },
-        { id: "tpb-5", name: "Boots", qty: "1 pair", readiness: "Needs inspection", interaction: "Pending", priority: "Normal", notes: "" }
+        { id: "tpb-1", name: "Combinaison SERGE thermostable", qty: "1", readiness: "Unknown", interaction: "Pending", priority: "Normal", notes: "" },
+        { id: "tpb-2", name: "Ceinture et pochette", qty: "1", readiness: "Unknown", interaction: "Pending", priority: "Normal", notes: "" },
+        { id: "tpb-3", name: "Gants", qty: "1 paire", readiness: "Unknown", interaction: "Pending", priority: "Normal", notes: "" },
+        { id: "tpb-4", name: "Cagoule", qty: "1", readiness: "Unknown", interaction: "Pending", priority: "Normal", notes: "" },
+        { id: "tpb-5", name: "Lunettes de protection", qty: "1", readiness: "Unknown", interaction: "Pending", priority: "Normal", notes: "" },
+        { id: "tpb-6", name: "Chaussettes ignifugées", qty: "1 paire", readiness: "Unknown", interaction: "Pending", priority: "Normal", notes: "" },
+        { id: "tpb-7", name: "Brassard de couleur", qty: "1", readiness: "Unknown", interaction: "Pending", priority: "Normal", notes: "" }
       ]
     },
     {
       id: "lk-tis",
       code: "TIS",
       state: "Placed and saved",
-      note: "Locker and equipment actors placed and saved. Item names below are placeholders — rename to match the actual actors.",
-      limitation: "Pickup and equip interactions remain future work. No Play/VR test of the repaired installation is recorded.",
+      note: "LOCAL INCENDIE, aft starboard, red band. Wardrobe actors placed and saved; 6 equipment items labelled.",
+      limitation: "Pickup and equip interactions remain future work. No Play/VR test of the repaired installation is recorded, so readiness stays Unknown.",
       items: [
-        { id: "tis-1", name: "Protective suit", qty: "1", readiness: "Ready", interaction: "Pending", priority: "Normal", notes: "" },
-        { id: "tis-2", name: "Flash hood", qty: "1", readiness: "Ready", interaction: "Pending", priority: "Normal", notes: "" },
-        { id: "tis-3", name: "Gloves", qty: "1 pair", readiness: "Ready", interaction: "Pending", priority: "Normal", notes: "" },
-        { id: "tis-4", name: "Boots", qty: "1 pair", readiness: "Ready", interaction: "Pending", priority: "Normal", notes: "" }
+        { id: "tis-1", name: "Veste de feu", qty: "1", readiness: "Unknown", interaction: "Pending", priority: "Normal", notes: "" },
+        { id: "tis-2", name: "Pantalon de feu", qty: "1", readiness: "Unknown", interaction: "Pending", priority: "Normal", notes: "" },
+        { id: "tis-3", name: "Cagoule", qty: "1", readiness: "Unknown", interaction: "Pending", priority: "Normal", notes: "" },
+        { id: "tis-4", name: "Gants de feu", qty: "1 paire", readiness: "Unknown", interaction: "Pending", priority: "Normal", notes: "" },
+        { id: "tis-5", name: "Casque F1 à visière", qty: "1", readiness: "Unknown", interaction: "Pending", priority: "Normal", notes: "" },
+        { id: "tis-6", name: "Bottes de feu", qty: "1 paire", readiness: "Unknown", interaction: "Pending", priority: "Normal", notes: "" }
       ]
     },
     {
       id: "lk-tisa",
       code: "TISA",
       state: "Placed and saved",
-      note: "Locker and equipment actors placed and saved. Item names below are placeholders — rename to match the actual actors.",
-      limitation: "Pickup and equip interactions remain future work. No Play/VR test of the repaired installation is recorded.",
+      note: "LOCAL INCENDIE, aft starboard, navy blue band. Wardrobe actors placed and saved; 4 equipment items labelled.",
+      limitation: "Pickup and equip interactions remain future work. No Play/VR test of the repaired installation is recorded, so readiness stays Unknown.",
       items: [
-        { id: "tisa-1", name: "Protective suit", qty: "1", readiness: "Ready", interaction: "Pending", priority: "Normal", notes: "" },
-        { id: "tisa-2", name: "Flash hood", qty: "1", readiness: "Ready", interaction: "Pending", priority: "Normal", notes: "" },
-        { id: "tisa-3", name: "Gloves", qty: "1 pair", readiness: "Ready", interaction: "Pending", priority: "Normal", notes: "" },
-        { id: "tisa-4", name: "Boots", qty: "1 pair", readiness: "Ready", interaction: "Pending", priority: "Normal", notes: "" }
+        { id: "tisa-1", name: "Tenue d'intervention aviation", qty: "1", readiness: "Unknown", interaction: "Pending", priority: "Normal", notes: "" },
+        { id: "tisa-2", name: "Casque à visière", qty: "1", readiness: "Unknown", interaction: "Pending", priority: "Normal", notes: "" },
+        { id: "tisa-3", name: "Gants", qty: "1 paire", readiness: "Unknown", interaction: "Pending", priority: "Normal", notes: "" },
+        { id: "tisa-4", name: "Protection respiratoire", qty: "1", readiness: "Unknown", interaction: "Pending", priority: "Normal", notes: "" }
       ]
     },
     {
       id: "lk-ari",
       code: "ARI",
       state: "Placed and saved",
-      note: "Locker and equipment actors placed and saved. Item names below are placeholders — rename to match the actual actors.",
-      limitation: "Pickup and equip interactions remain future work. No Play/VR test of the repaired installation is recorded.",
+      note: "LOCAL INCENDIE, aft starboard, petrol blue band. Wardrobe actors placed and saved; 4 equipment items labelled.",
+      limitation: "Pickup and equip interactions remain future work. No Play/VR test of the repaired installation is recorded, so readiness stays Unknown.",
       items: [
-        { id: "ari-1", name: "Harness", qty: "1", readiness: "Ready", interaction: "Pending", priority: "Normal", notes: "" },
-        { id: "ari-2", name: "Air cylinder", qty: "1", readiness: "Needs inspection", interaction: "Pending", priority: "High", notes: "" },
-        { id: "ari-3", name: "Face mask", qty: "1", readiness: "Ready", interaction: "Pending", priority: "Normal", notes: "" },
-        { id: "ari-4", name: "Regulator", qty: "1", readiness: "Ready", interaction: "Pending", priority: "Normal", notes: "" },
-        { id: "ari-5", name: "PASS device", qty: "1", readiness: "Unknown", interaction: "Pending", priority: "Low", notes: "" }
+        { id: "ari-1", name: "Harnais et bouteille (ARICO)", qty: "1", readiness: "Unknown", interaction: "Pending", priority: "Normal", notes: "" },
+        { id: "ari-2", name: "Pièce faciale", qty: "1", readiness: "Unknown", interaction: "Pending", priority: "Normal", notes: "" },
+        { id: "ari-3", name: "Appareil porté, contrôle croisé", qty: "1", readiness: "Unknown", interaction: "Pending", priority: "Normal", notes: "" },
+        { id: "ari-4", name: "ARICF — circuit fermé", qty: "1", readiness: "Unknown", interaction: "Pending", priority: "Normal", notes: "" }
       ]
     }
   ],

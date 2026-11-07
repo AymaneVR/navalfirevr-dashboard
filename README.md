@@ -36,6 +36,7 @@ python -m http.server 8000
 | **VR interactions** | Planning board grouped by status: Planned, Designing, Ready to implement, In progress, Done. |
 | **Graphics & headset** | Desktop checks, standalone checks, future VR evaluation, and the headset/deployment/budget comparison. |
 | **Codex tasks** | Reusable task tracker with search, filters, sorting, and a detail editor. |
+| **Vault notes** | Every note from the `NavalVault` Obsidian vault, searchable, with rendered Markdown, wikilinks, backlinks, and an "Open in Obsidian" link. |
 
 ### Deliberate caveats
 
@@ -57,6 +58,35 @@ progress:
 If browser storage is unavailable (some `file://` configurations), the dashboard falls back to
 in-memory state for the session and says so in the sidebar under **STORAGE**.
 
+## Vault sync (Obsidian)
+
+The **Vault notes** page mirrors the `NavalVault` Obsidian vault. The site is static, so it
+cannot read Obsidian at runtime; a script exports the vault to `vault-data.js`, which is
+committed and served like any other asset.
+
+```powershell
+# Export the vault (finds it automatically via Obsidian's vault registry)
+.\tools\sync-vault.ps1
+
+# Export, then commit and push so the live site updates
+.\tools\sync-vault.ps1 -Publish
+
+# Re-export automatically whenever a note is saved in Obsidian
+.\tools\sync-vault.ps1 -Watch
+
+# Point at a different vault
+.\tools\sync-vault.ps1 -Vault "D:\Notes\NavalVault"
+```
+
+What gets exported per note: title, folder, tags, `updated` date, excerpt, full Markdown body,
+resolved wikilinks, and backlinks. `.obsidian/`, `.git/`, and other dot-folders are skipped.
+
+Notes that are added, edited, or deleted in the vault appear on the site after the next sync —
+no code changes needed. Wikilinks (`[[Note]]`) become in-site links, and each note has an
+**Open in Obsidian** link that uses the `obsidian://` URI.
+
+`vault-data.js` is generated — do not edit it by hand.
+
 ## Editing the seed state
 
 `data.js` holds `SEED`, the recorded project state. It is used on first load and by **Reset**.
@@ -65,10 +95,14 @@ Statuses and priorities must come from the allowed lists defined at the top of `
 ## Files
 
 ```
-index.html    page shell, sidebar, top bar
-styles.css    all styling (navy command sidebar, pale workspace, teal/amber accents)
-data.js       seed project state
-app.js        rendering, editing, persistence, import/export
+index.html      page shell, sidebar, top bar
+styles.css      all styling (navy command sidebar, pale workspace, teal/amber accents)
+data.js         seed project state
+app.js          rendering, editing, persistence, import/export, Markdown renderer
+vault-data.js   generated vault export (do not edit by hand)
+tools/
+  sync-vault.mjs   Obsidian vault → vault-data.js exporter
+  sync-vault.ps1   wrapper: -Watch, -Publish, -Vault
 ```
 
 ## Deploying

@@ -77,6 +77,11 @@ const ROUTES = {
     title: "Codex task tracker",
     eyebrow: "NavalFireVR / Work queue",
     sub: "Reusable task list for work performed with Codex on the Unreal project."
+  },
+  vault: {
+    title: "Vault notes",
+    eyebrow: "NavalFireVR / Knowledge base",
+    sub: "Every note in the NavalVault Obsidian vault, mirrored here by the vault sync."
   }
 };
 
@@ -130,6 +135,7 @@ function hydrate(saved) {
 
 let state = loadState();
 let currentRoute = "overview";
+let currentSlug = null;
 let drawerCtx = null;
 let toastTimer = 0;
 let saveTimer = 0;
@@ -312,15 +318,20 @@ function sortedOpenTasks(limit) {
 /* Navigation and page shell                                           */
 /* ------------------------------------------------------------------ */
 
-function currentHashRoute() {
+function parseHash() {
   const raw = (window.location.hash || "").replace(/^#\/?/, "").trim();
-  return ROUTES[raw] ? raw : "overview";
+  if (raw === "vault" || raw.startsWith("vault/")) {
+    const slug = raw.startsWith("vault/") ? raw.slice(6) : null;
+    return { route: "vault", slug };
+  }
+  return { route: ROUTES[raw] ? raw : "overview", slug: null };
 }
 
-function navigate(route) {
+function navigate(route, slug) {
   if (!ROUTES[route]) route = "overview";
-  if (window.location.hash !== `#/${route}`) {
-    window.location.hash = `#/${route}`;
+  const target = slug ? `#/${route}/${slug}` : `#/${route}`;
+  if (window.location.hash !== target) {
+    window.location.hash = target;
     return;
   }
   render();
@@ -340,7 +351,8 @@ function syncNav() {
     lockers: c.lockerCount,
     interactions: state.interactions.length,
     graphics: state.graphics.groups.reduce((n, g) => n + g.items.length, 0),
-    tasks: c.openTasks
+    tasks: c.openTasks,
+    vault: vaultNotes().length
   };
 
   document.querySelectorAll("[data-count]").forEach((node) => {
@@ -363,6 +375,7 @@ function render() {
 
   const page = document.getElementById("page");
   page.innerHTML = VIEWS[currentRoute]();
+  document.title = `${route.title} — NavalFireVR`;
 
   syncNav();
   updateSavedLabel();
@@ -421,7 +434,7 @@ function viewOverview() {
           <div class="locker-meta">${esc(locker.state)}</div>
           <div class="locker-stats">
             <div class="locker-stat"><b>${locker.items.length}</b>items</div>
-            <div class="locker-stat"><b>${ready}</b>ready</div>
+            <div class="locker-stat"><b>${ready}</b>verified</div>
             <div class="locker-stat"><b>${pending}</b>pending</div>
           </div>
         </article>`;
@@ -484,7 +497,7 @@ function viewOverview() {
           <span class="micro">Lockers</span>
         </div>
         <div class="kpi-label">Equipment lockers</div>
-        <div class="kpi-sub">${c.readyItems} of ${c.itemCount} items ready${c.pendingItems ? ` · ${c.pendingItems} pending` : ""}</div>
+        <div class="kpi-sub">${c.readyItems} of ${c.itemCount} verified${c.pendingItems ? ` · ${c.pendingItems} pending` : ""}</div>
         <div class="kpi-bar"><i style="width:${pct(c.readyItems, c.itemCount)}%"></i></div>
       </button>
 
@@ -555,6 +568,35 @@ function viewOverview() {
           <div class="compare-cell"><div class="micro">Performance budget</div>${chip(state.decisions.perfBudget.value)}</div>
         </div>
         <div class="constraint-box">${esc(compare.constraint)}</div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-bottom:18px">
+      <div class="card-head">
+        <div>
+          <h2>Latest from the vault</h2>
+          <p>${
+            vaultData()
+              ? `${vaultNotes().length} notes synced from ${esc(vaultData().vaultName)} · ${esc(formatSyncTime(vaultData().generatedAt))}`
+              : "Vault not synced yet — run tools\\sync-vault.ps1"
+          }</p>
+        </div>
+        <button class="btn btn--sm" data-act="go" data-route="vault">Open vault notes</button>
+      </div>
+      <div class="card-body tight">
+        <div class="mini-list">
+          ${vaultNotes()
+            .slice(0, 5)
+            .map(
+              (note) => `
+            <div class="mini-row">
+              <span class="title">${esc(note.title)}</span>
+              <span class="micro" style="letter-spacing:.06em">${esc(note.folder || "root")}</span>
+              <span class="num">${esc(note.updated || "")}</span>
+            </div>`
+            )
+            .join("") || `<div class="empty">No vault notes mirrored yet.</div>`}
+        </div>
       </div>
     </section>
 
@@ -704,7 +746,7 @@ function viewLockers() {
             </div>
             <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
               <div><div class="micro">Items</div><div style="font-weight:600">${locker.items.length}</div></div>
-              <div><div class="micro">Ready</div><div style="font-weight:600">${ready}</div></div>
+              <div><div class="micro">Verified</div><div style="font-weight:600">${ready}</div></div>
               <div><div class="micro">Pending</div><div style="font-weight:600">${pending}</div></div>
               <span class="chip chip--state">Placed and saved</span>
             </div>
@@ -969,6 +1011,329 @@ function viewTasks() {
     </section>`;
 }
 
+/* ------------------------------------------------------------------ */
+/* Vault notes (mirrored from the Obsidian vault)                      */
+/* ------------------------------------------------------------------ */
+
+let vaultQuery = "";
+let vaultTag = null;
+let wikiIndex = null;
+
+function vaultData() {
+  const data = window.VAULT_DATA;
+  return data && Array.isArray(data.notes) && data.notes.length ? data : null;
+}
+
+function vaultNotes() {
+  const data = vaultData();
+  return data ? data.notes : [];
+}
+
+function wikiMaps() {
+  if (wikiIndex) return wikiIndex;
+  const map = new Map();
+  for (const note of vaultNotes()) {
+    map.set(note.file.toLowerCase(), note.slug);
+    map.set(note.title.toLowerCase(), note.slug);
+  }
+  wikiIndex = map;
+  return map;
+}
+
+function resolveWiki(target) {
+  return wikiMaps().get(String(target).trim().toLowerCase()) || null;
+}
+
+function formatSyncTime(iso) {
+  if (!iso) return "never";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "unknown";
+  return date.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+}
+
+/* ---------- tiny markdown renderer (headings, lists, tables, links) ---------- */
+
+function inlineMd(text) {
+  let value = esc(text);
+  const codes = [];
+  value = value.replace(/`([^`]+)`/g, (_match, code) => {
+    codes.push(code);
+    return `\u0001${codes.length - 1}\u0001`;
+  });
+
+  value = value.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_match, alt) => {
+    return `<span class="md-image" title="Attachment not mirrored">${alt || "image"}</span>`;
+  });
+
+  value = value.replace(/\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?\]\]/g, (_match, target, alias) => {
+    const label = alias || target;
+    const slug = resolveWiki(target);
+    if (!slug) return `<span class="md-wikilink is-missing" title="Note is not in the vault">${label}</span>`;
+    return `<a class="md-wikilink" href="#/vault/${slug}" data-act="vault-note" data-slug="${slug}">${label}</a>`;
+  });
+
+  value = value.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  value = value.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  value = value.replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
+  value = value.replace(/~~([^~]+)~~/g, "<del>$1</del>");
+  value = value.replace(/\u0001(\d+)\u0001/g, (_match, index) => `<code>${codes[Number(index)]}</code>`);
+  return value;
+}
+
+function tableRow(line) {
+  return line.replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
+}
+
+function renderMarkdown(markdown) {
+  const lines = String(markdown || "").replace(/\r\n?/g, "\n").split("\n");
+  const out = [];
+  let paragraph = [];
+  let i = 0;
+
+  const flush = () => {
+    if (paragraph.length) {
+      out.push(`<p>${inlineMd(paragraph.join(" "))}</p>`);
+      paragraph = [];
+    }
+  };
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      flush();
+      i += 1;
+      continue;
+    }
+
+    if (trimmed.startsWith("```")) {
+      flush();
+      const lang = trimmed.slice(3).trim();
+      const buffer = [];
+      i += 1;
+      while (i < lines.length && !lines[i].trim().startsWith("```")) {
+        buffer.push(lines[i]);
+        i += 1;
+      }
+      i += 1;
+      out.push(`<pre><code${lang ? ` class="lang-${esc(lang)}"` : ""}>${esc(buffer.join("\n"))}</code></pre>`);
+      continue;
+    }
+
+    const heading = trimmed.match(/^(#{1,6})\s+(.*)$/);
+    if (heading) {
+      flush();
+      const level = heading[1].length;
+      out.push(`<h${level}>${inlineMd(heading[2].replace(/\s+#+\s*$/, ""))}</h${level}>`);
+      i += 1;
+      continue;
+    }
+
+    if (/^([-*_])\s*(\1\s*){2,}$/.test(trimmed)) {
+      flush();
+      out.push("<hr />");
+      i += 1;
+      continue;
+    }
+
+    if (
+      trimmed.startsWith("|") &&
+      lines[i + 1] &&
+      /^\|?[\s:|-]+\|?$/.test(lines[i + 1].trim()) &&
+      lines[i + 1].includes("-")
+    ) {
+      flush();
+      const header = tableRow(trimmed);
+      i += 2;
+      const rows = [];
+      while (i < lines.length && lines[i].trim().startsWith("|")) {
+        rows.push(tableRow(lines[i].trim()));
+        i += 1;
+      }
+      const head = header.map((cell) => `<th>${inlineMd(cell)}</th>`).join("");
+      const body = rows
+        .map((row) => `<tr>${row.map((cell) => `<td>${inlineMd(cell)}</td>`).join("")}</tr>`)
+        .join("");
+      out.push(`<div class="md-table"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`);
+      continue;
+    }
+
+    if (trimmed.startsWith(">")) {
+      flush();
+      const buffer = [];
+      while (i < lines.length && lines[i].trim().startsWith(">")) {
+        buffer.push(lines[i].trim().replace(/^>\s?/, ""));
+        i += 1;
+      }
+      const callout = buffer[0] && buffer[0].match(/^\[!(\w+)\]\s*(.*)$/);
+      if (callout) {
+        const title = callout[2] || callout[1];
+        out.push(
+          `<blockquote class="md-callout"><div class="md-callout-title">${inlineMd(title)}</div>${renderMarkdown(
+            buffer.slice(1).join("\n")
+          )}</blockquote>`
+        );
+      } else {
+        out.push(`<blockquote>${renderMarkdown(buffer.join("\n"))}</blockquote>`);
+      }
+      continue;
+    }
+
+    if (/^([-*+]|\d+[.)])\s+/.test(trimmed)) {
+      flush();
+      const ordered = /^\d/.test(trimmed);
+      const items = [];
+      while (i < lines.length) {
+        const current = lines[i].trim();
+        const match = current.match(/^([-*+]|\d+[.)])\s+(.*)$/);
+        if (!match) break;
+        let content = match[2];
+        let className = "";
+        const task = content.match(/^\[([ xX])\]\s+(.*)$/);
+        if (task) {
+          const checked = task[1].toLowerCase() === "x";
+          className = "md-task";
+          content = `<span class="md-check${checked ? " is-checked" : ""}">${checked ? "✓" : ""}</span>${inlineMd(task[2])}`;
+        } else {
+          content = inlineMd(content);
+        }
+        items.push(`<li class="${className}">${content}</li>`);
+        i += 1;
+        while (i < lines.length && /^\s{2,}\S/.test(lines[i]) && !/^\s*([-*+]|\d+[.)])\s+/.test(lines[i])) {
+          items[items.length - 1] = items[items.length - 1].replace("</li>", ` ${inlineMd(lines[i].trim())}</li>`);
+          i += 1;
+        }
+      }
+      const tag = ordered ? "ol" : "ul";
+      out.push(`<${tag}>${items.join("")}</${tag}>`);
+      continue;
+    }
+
+    paragraph.push(trimmed);
+    i += 1;
+  }
+
+  flush();
+  return out.join("\n");
+}
+
+function stripLeadingTitle(body) {
+  const lines = String(body || "").replace(/\r\n?/g, "\n").split("\n");
+  let index = 0;
+  while (index < lines.length && !lines[index].trim()) index += 1;
+  if (index < lines.length && /^#\s+\S/.test(lines[index].trim())) lines.splice(index, 1);
+  return lines.join("\n");
+}
+
+/* ---------- vault view ---------- */
+
+function viewVault() {
+  const data = vaultData();
+  const notes = vaultNotes();
+
+  if (!data) {
+    return `
+      <section class="card">
+        <div class="card-body empty">
+          <p><strong>No vault data loaded.</strong></p>
+          <p style="margin-top:8px">Run <code>tools\\sync-vault.ps1</code> in the project folder to export the Obsidian vault to <code>vault-data.js</code>, then reload this page.</p>
+        </div>
+      </section>`;
+  }
+
+  const query = vaultQuery.trim().toLowerCase();
+  const filtered = notes.filter((note) => {
+    if (vaultTag && !note.tags.includes(vaultTag)) return false;
+    if (!query) return true;
+    return `${note.title} ${note.folder} ${note.tags.join(" ")} ${note.excerpt} ${note.body}`
+      .toLowerCase()
+      .includes(query);
+  });
+
+  const homeNote = notes.find((note) => note.slug === "home") || notes[0];
+  const selected =
+    notes.find((note) => note.slug === currentSlug) ||
+    ((query || vaultTag) && filtered.length ? filtered[0] : null) ||
+    homeNote;
+
+  const list = filtered
+    .map((note) => {
+      const active = selected && note.slug === selected.slug ? " is-active" : "";
+      return `
+        <button class="vnote${active}" data-act="vault-note" data-slug="${note.slug}">
+          <span class="vnote-title">${esc(note.title)}</span>
+          <span class="vnote-meta">${esc(note.folder || "Vault root")}${note.updated ? ` · ${esc(note.updated)}` : ""}</span>
+        </button>`;
+    })
+    .join("");
+
+  const tags = data.tags
+    .slice(0, 14)
+    .map(
+      (entry) =>
+        `<button class="vtag${vaultTag === entry.tag ? " is-active" : ""}" data-act="vault-tag" data-tag="${esc(entry.tag)}">${esc(
+          entry.tag
+        )}<b>${entry.count}</b></button>`
+    )
+    .join("");
+
+  const backlinks = (selected.backlinks || [])
+    .map((slug) => notes.find((note) => note.slug === slug))
+    .filter(Boolean)
+    .map((note) => `<button class="vnote-link" data-act="vault-note" data-slug="${note.slug}">${esc(note.title)}</button>`)
+    .join("");
+
+  const forward = (selected.links || [])
+    .map((slug) => notes.find((note) => note.slug === slug))
+    .filter(Boolean)
+    .slice(0, 8)
+    .map((note) => `<button class="vnote-link" data-act="vault-note" data-slug="${note.slug}">${esc(note.title)}</button>`)
+    .join("");
+
+  const obsidianHref = `obsidian://open?vault=${encodeURIComponent(data.vaultName)}&file=${encodeURIComponent(
+    selected.folder ? `${selected.folder}/${selected.file}` : selected.file
+  )}`;
+
+  return `
+    <div class="vault-layout">
+      <aside class="vault-list card">
+        <div class="vault-search">
+          <input class="input" type="search" placeholder="Search all notes…" value="${esc(vaultQuery)}" data-vfilter="q" aria-label="Search vault notes" />
+        </div>
+        <div class="vault-tags">${tags}</div>
+        <div class="vault-notes">${list || `<div class="empty">No notes match.</div>`}</div>
+        <div class="vault-sync">
+          <span>${notes.length} notes</span>
+          <span title="Vault export time">Synced ${esc(formatSyncTime(data.generatedAt))}</span>
+        </div>
+      </aside>
+
+      <article class="vault-reader card">
+        <header class="vault-reader-head">
+          <div class="micro">${esc(selected.folder || "Vault root")}</div>
+          <h2>${esc(selected.title)}</h2>
+          <div class="vault-meta">
+            ${selected.updated ? `<span class="chip chip--state">Updated ${esc(selected.updated)}</span>` : ""}
+            ${selected.tags.map((tag) => `<span class="vtag-static">${esc(tag)}</span>`).join("")}
+            <a class="vault-open" href="${esc(obsidianHref)}" title="Open this note in Obsidian">Open in Obsidian</a>
+          </div>
+        </header>
+        <div class="md-body">${renderMarkdown(stripLeadingTitle(selected.body))}</div>
+        ${
+          backlinks
+            ? `<footer class="vault-links"><div class="micro">Linked from</div><div class="vnote-links">${backlinks}</div></footer>`
+            : ""
+        }
+        ${
+          forward
+            ? `<footer class="vault-links"><div class="micro">Links to</div><div class="vnote-links">${forward}</div></footer>`
+            : ""
+        }
+      </article>
+    </div>`;
+}
+
 const VIEWS = {
   overview: viewOverview,
   roadmap: viewRoadmap,
@@ -976,7 +1341,8 @@ const VIEWS = {
   lockers: viewLockers,
   interactions: viewInteractions,
   graphics: viewGraphics,
-  tasks: viewTasks
+  tasks: viewTasks,
+  vault: viewVault
 };
 
 /* ------------------------------------------------------------------ */
@@ -1371,6 +1737,11 @@ document.addEventListener("click", (event) => {
 
   if (act === "go") {
     navigate(target.dataset.route);
+  } else if (act === "vault-note") {
+    navigate("vault", target.dataset.slug);
+  } else if (act === "vault-tag") {
+    vaultTag = vaultTag === target.dataset.tag ? null : target.dataset.tag;
+    render();
   } else if (act === "env-toggle") {
     toggleEnvironment(target.dataset.id);
   } else if (act === "locker-item-add") {
@@ -1432,6 +1803,22 @@ document.addEventListener("change", (event) => {
 });
 
 document.addEventListener("input", (event) => {
+  const vaultFilter = event.target.closest("[data-vfilter]");
+  if (vaultFilter) {
+    vaultQuery = vaultFilter.value;
+    if (currentRoute === "vault") {
+      const scrollY = window.scrollY;
+      render();
+      const input = document.querySelector("[data-vfilter]");
+      if (input) {
+        input.focus({ preventScroll: true });
+        input.setSelectionRange(input.value.length, input.value.length);
+      }
+      window.scrollTo(0, scrollY);
+    }
+    return;
+  }
+
   const filter = event.target.closest('[data-filter="q"]');
   if (filter) {
     taskView.q = filter.value;
@@ -1464,7 +1851,9 @@ document.getElementById("file-import").addEventListener("change", (event) => {
 });
 
 window.addEventListener("hashchange", () => {
-  currentRoute = currentHashRoute();
+  const parsed = parseHash();
+  currentRoute = parsed.route;
+  currentSlug = parsed.slug;
   render();
 });
 
@@ -1473,7 +1862,9 @@ window.addEventListener("hashchange", () => {
 /* ------------------------------------------------------------------ */
 
 (function boot() {
-  currentRoute = currentHashRoute();
+  const parsed = parseHash();
+  currentRoute = parsed.route;
+  currentSlug = parsed.slug;
   const seeded = document.getElementById("foot-seeded");
   if (seeded) seeded.textContent = state.meta.seeded || SEED.meta.seeded;
   if (!window.location.hash) window.location.replace("#/overview");

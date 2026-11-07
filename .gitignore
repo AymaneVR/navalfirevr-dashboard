@@ -1,0 +1,5 @@
+# Local scratch
+.chrome-profile/
+*.log
+.DS_Store
+Thumbs.db

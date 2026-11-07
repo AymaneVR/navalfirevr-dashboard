@@ -1440,6 +1440,12 @@ table.data .cell-sub { color: var(--muted); font-size: 11.5px; margin-top: 2px; 
 
 body.is-scrolled .topbar { box-shadow: 0 6px 22px rgba(9, 26, 40, .1); }
 
+@media (max-width: 900px) {
+  /* On phones the header is part of the page: it scrolls away instead of
+     covering the content. */
+  body.is-scrolled .topbar { box-shadow: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: .01ms !important;
@@ -1465,7 +1471,12 @@ body.is-scrolled .topbar { box-shadow: 0 6px 22px rgba(9, 26, 40, .1); }
   .nav-item { width: auto; flex: none; }
   .nav-count { display: none; }
   .sidebar-foot { display: none; }
-  .topbar { padding: 16px 18px 13px; }
+  .topbar {
+    position: static;
+    padding: 16px 18px 13px;
+    backdrop-filter: none;
+    background: var(--bg);
+  }
   .page { padding: 16px 18px 40px; }
   .check-row { grid-template-columns: 26px minmax(0, 1fr); }
   .check-row > :nth-child(3), .check-row > :nth-child(4) { grid-column: 2; }

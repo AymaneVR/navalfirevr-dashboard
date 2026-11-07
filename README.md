@@ -37,6 +37,7 @@ python -m http.server 8000
 | **Graphics & headset** | Desktop checks, standalone checks, future VR evaluation, and the headset/deployment/budget comparison. |
 | **Codex tasks** | Reusable task tracker with search, filters, sorting, and a detail editor. |
 | **Completion plan** | The 10-phase, 59-task route to finishing the project: 42 role × fire-class scenarios, player-led AI équipes, an interactive 42-cell scenario matrix, and a definition of done. |
+| **Project gallery** | Real captures from the Unreal build — main menu, ten ship compartments, fire-equipment room and bow — with captions, tag filters and a lightbox. |
 | **Vault notes** | Every note from the `NavalVault` Obsidian vault, searchable, with rendered Markdown, wikilinks, backlinks, and an "Open in Obsidian" link. |
 
 ### Deliberate caveats

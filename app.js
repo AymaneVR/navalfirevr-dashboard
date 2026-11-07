@@ -42,6 +42,99 @@ const STATUS_CLASS = {
 
 const PRIORITY_RANK = { Urgent: 0, High: 1, Normal: 2, Low: 3 };
 
+/* Real captures from the Unreal Engine 5 build, exported from the project's own
+   previews and re-encoded to WebP. Captions describe what is actually shown. */
+const GALLERY = [
+  {
+    file: "menu.webp",
+    title: "Main menu",
+    caption: "Role and fire-class selection over the FREMM 701 artwork.",
+    tag: "Menu"
+  },
+  {
+    file: "galley.webp",
+    title: "Galley — CUISINE",
+    caption: "The kitchen drill compartment: worktops, shelving and the fire glow.",
+    tag: "Ship"
+  },
+  {
+    file: "fire-equipment.webp",
+    title: "Fire-equipment room",
+    caption: "LOCAL INCENDIE, aft starboard, with the four wardrobes: ARI, TISA, TIS, TPB.",
+    tag: "Equipment"
+  },
+  {
+    file: "lockers.webp",
+    title: "Locker set",
+    caption: "The four wardrobes and the equipment inventory they hold.",
+    tag: "Equipment"
+  },
+  {
+    file: "corridor.webp",
+    title: "Corridor",
+    caption: "Structural wall panels and hatch hardware after the ship-wide realism pass.",
+    tag: "Ship"
+  },
+  {
+    file: "crew-mess.webp",
+    title: "Crew mess",
+    caption: "One of the ten compartments covered by the graphics pass.",
+    tag: "Ship"
+  },
+  {
+    file: "machinery.webp",
+    title: "Machinery space",
+    caption: "Machinery compartment with the imported surface finishes.",
+    tag: "Ship"
+  },
+  {
+    file: "machine-control.webp",
+    title: "Machine control",
+    caption: "Control compartment adjoining the machinery space.",
+    tag: "Ship"
+  },
+  {
+    file: "workshop.webp",
+    title: "Workshop",
+    caption: "Workshop compartment, including wall kickplates and services.",
+    tag: "Ship"
+  },
+  {
+    file: "technical-store.webp",
+    title: "Technical store",
+    caption: "Technical store, one of the forward compartments.",
+    tag: "Ship"
+  },
+  {
+    file: "security-post.webp",
+    title: "Security post",
+    caption: "PC SÉCURITÉ with its readable signage.",
+    tag: "Ship"
+  },
+  {
+    file: "forward-store-port.webp",
+    title: "Forward store — port",
+    caption: "Port forward store compartment.",
+    tag: "Ship"
+  },
+  {
+    file: "forward-store-starboard.webp",
+    title: "Forward store — starboard",
+    caption: "Starboard forward store compartment.",
+    tag: "Ship"
+  },
+  {
+    file: "sea.webp",
+    title: "Bow and sea",
+    caption: "Bow railing with the animated, non-explorable sea.",
+    tag: "Exterior"
+  }
+];
+
+/* The menu shot is used as the hero, so it is not repeated in the grid. */
+const GALLERY_GRID = GALLERY.filter((shot) => shot.file !== "menu.webp");
+const GALLERY_TAGS = ["All", ...Array.from(new Set(GALLERY_GRID.map((shot) => shot.tag)))];
+
 const ROUTES = {
   overview: {
     title: "Overview",
@@ -87,6 +180,11 @@ const ROUTES = {
     title: "Completion plan",
     eyebrow: "NavalFireVR / Delivery",
     sub: "What must be true before the project is finished: a complete fire-suppression scenario in all 42 role × fire-class routes, with the player leading an AI équipe."
+  },
+  gallery: {
+    title: "Project gallery",
+    eyebrow: "NavalFireVR / Inside the build",
+    sub: "Real captures from the Unreal Engine 5 project — the menu, the ship compartments, the fire-equipment room and the bow."
   }
 };
 
@@ -574,6 +672,30 @@ function viewOverview() {
           <div class="compare-cell"><div class="micro">Performance budget</div>${chip(state.decisions.perfBudget.value)}</div>
         </div>
         <div class="constraint-box">${esc(compare.constraint)}</div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-bottom:18px">
+      <div class="card-head">
+        <div>
+          <h2>From the build</h2>
+          <p>Real captures from the Unreal project — menu, ship, equipment, bow.</p>
+        </div>
+        <button class="btn btn--sm" data-act="go" data-route="gallery">Open gallery</button>
+      </div>
+      <div class="card-body">
+        <div class="gallery-strip">
+          ${["menu.webp", "galley.webp", "fire-equipment.webp", "sea.webp"]
+            .map((file) => {
+              const index = GALLERY.findIndex((shot) => shot.file === file);
+              const shot = GALLERY[index];
+              return `<button class="strip-shot" data-act="shot-open" data-index="${index}" title="${esc(shot.title)}">
+                <img src="images/${shot.file}" alt="${esc(shot.title)}" loading="lazy" />
+                <span>${esc(shot.title)}</span>
+              </button>`;
+            })
+            .join("")}
+        </div>
       </div>
     </section>
 
@@ -1526,6 +1648,89 @@ function viewPlan() {
     <div class="phase-stack">${phases}</div>`;
 }
 
+/* ------------------------------------------------------------------ */
+/* Project gallery                                                     */
+/* ------------------------------------------------------------------ */
+
+let galleryTag = "All";
+let lightboxIndex = null;
+
+function galleryShots() {
+  return galleryTag === "All" ? GALLERY_GRID : GALLERY_GRID.filter((shot) => shot.tag === galleryTag);
+}
+
+function renderLightbox() {
+  const el = document.getElementById("lightbox");
+  if (!el) return;
+
+  if (lightboxIndex === null || !GALLERY[lightboxIndex]) {
+    el.className = "lightbox";
+    el.innerHTML = "";
+    el.setAttribute("aria-hidden", "true");
+    return;
+  }
+
+  const shot = GALLERY[lightboxIndex];
+  el.className = "lightbox is-open";
+  el.setAttribute("aria-hidden", "false");
+  el.innerHTML = `
+    <button class="lb-close" data-act="lb-close" aria-label="Close image">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <button class="lb-nav lb-prev" data-act="lb-prev" aria-label="Previous image">‹</button>
+    <figure class="lb-figure">
+      <img src="images/${shot.file}" alt="${esc(shot.title)}" />
+      <figcaption>
+        <strong>${esc(shot.title)}</strong>
+        <span>${esc(shot.caption)}</span>
+      </figcaption>
+    </figure>
+    <button class="lb-nav lb-next" data-act="lb-next" aria-label="Next image">›</button>
+    <div class="lb-count">${lightboxIndex + 1} / ${GALLERY.length}</div>`;
+}
+
+function viewGallery() {
+  const shots = galleryShots();
+  const tags = GALLERY_TAGS
+    .map(
+      (tag) =>
+        `<button class="gallery-tag${galleryTag === tag ? " is-active" : ""}" data-act="gallery-tag" data-tag="${esc(tag)}">${esc(tag)}</button>`
+    )
+    .join("");
+
+  const cards = shots
+    .map((shot) => {
+      const index = GALLERY.indexOf(shot);
+      return `
+        <figure class="shot" data-act="shot-open" data-index="${index}" tabindex="0" role="button" aria-label="Open ${esc(shot.title)}">
+          <img src="images/${shot.file}" alt="${esc(shot.title)}" loading="lazy" />
+          <figcaption>
+            <strong>${esc(shot.title)}</strong>
+            <span>${esc(shot.caption)}</span>
+            <em>${esc(shot.tag)}</em>
+          </figcaption>
+        </figure>`;
+    })
+    .join("");
+
+  return `
+    <section class="gallery-hero">
+      <img src="images/menu.webp" alt="NavalFireVR main menu over the FREMM 701 artwork" />
+      <div class="gallery-hero-text">
+        <div class="micro">NavalFireVR / Unreal Engine 5</div>
+        <h2>Inside the build</h2>
+        <p>Real captures from the project: the main menu, the ship compartments, the fire-equipment room and the bow.</p>
+      </div>
+    </section>
+
+    <div class="gallery-toolbar">
+      <div class="gallery-tags">${tags}</div>
+      <span class="result-count">${shots.length} of ${GALLERY_GRID.length} images</span>
+    </div>
+
+    <div class="gallery-grid">${cards}</div>`;
+}
+
 const VIEWS = {
   overview: viewOverview,
   roadmap: viewRoadmap,
@@ -1535,7 +1740,8 @@ const VIEWS = {
   graphics: viewGraphics,
   tasks: viewTasks,
   vault: viewVault,
-  plan: viewPlan
+  plan: viewPlan,
+  gallery: viewGallery
 };
 
 /* ------------------------------------------------------------------ */
@@ -1922,6 +2128,11 @@ document.addEventListener("click", (event) => {
 
   const target = event.target.closest("[data-act]");
   if (!target) {
+    if (event.target.id === "lightbox") {
+      lightboxIndex = null;
+      renderLightbox();
+      return;
+    }
     if (event.target.closest(".drawer-overlay")) closeDrawer();
     return;
   }
@@ -1937,6 +2148,21 @@ document.addEventListener("click", (event) => {
     render();
   } else if (act === "matrix-cycle") {
     cycleMatrix(target.dataset.role, target.dataset.class);
+  } else if (act === "gallery-tag") {
+    galleryTag = target.dataset.tag;
+    render();
+  } else if (act === "shot-open") {
+    lightboxIndex = Number(target.dataset.index);
+    renderLightbox();
+  } else if (act === "lb-close") {
+    lightboxIndex = null;
+    renderLightbox();
+  } else if (act === "lb-prev") {
+    lightboxIndex = (lightboxIndex - 1 + GALLERY.length) % GALLERY.length;
+    renderLightbox();
+  } else if (act === "lb-next") {
+    lightboxIndex = (lightboxIndex + 1) % GALLERY.length;
+    renderLightbox();
   } else if (act === "env-toggle") {
     toggleEnvironment(target.dataset.id);
   } else if (act === "locker-item-add") {
@@ -1964,6 +2190,24 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
+  if (lightboxIndex !== null) {
+    if (event.key === "Escape") {
+      lightboxIndex = null;
+      renderLightbox();
+      return;
+    }
+    if (event.key === "ArrowLeft") {
+      lightboxIndex = (lightboxIndex - 1 + GALLERY.length) % GALLERY.length;
+      renderLightbox();
+      return;
+    }
+    if (event.key === "ArrowRight") {
+      lightboxIndex = (lightboxIndex + 1) % GALLERY.length;
+      renderLightbox();
+      return;
+    }
+  }
+
   if (event.key === "Escape" && drawerCtx) {
     closeDrawer();
     render();

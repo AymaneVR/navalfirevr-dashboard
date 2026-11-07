@@ -7,6 +7,24 @@ tracker.
 
 Everything is editable, and every edit is saved in the browser automatically.
 
+## UI/UX standard (installed)
+
+All UI work on this site follows the **UI UX Pro Max** design-intelligence skill
+([nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill),
+MIT licensed). It is installed at the workspace Agent-Standard location:
+
+```
+..\skills\ui-ux-pro-max\        clone of the skill repo (source of truth)
+..\.agents\skills\ui-ux-pro-max  installed skill + companions
+```
+
+- **Baseline design system:** `design-system/navalfirevr/MASTER.md` (persisted by the skill).
+- **Established identity wins:** the site's existing navy/teal/amber control-room look
+  (`styles.css` `:root` tokens) takes precedence over anything the generator suggests.
+- **Usage:** for any UI/UX task, run the skill's search engine, e.g.
+  `python ..\skills\ui-ux-pro-max\src\ui-ux-pro-max\scripts\search.py "<query>" --design-system`
+  or `--domain ux`, then honour the pre-delivery checklist before shipping UI.
+
 ## Running it
 
 No build step, no dependencies, no server required:

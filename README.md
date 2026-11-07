@@ -64,19 +64,29 @@ The **Vault notes** page mirrors the `NavalVault` Obsidian vault. The site is st
 cannot read Obsidian at runtime; a script exports the vault to `vault-data.js`, which is
 committed and served like any other asset.
 
-```powershell
-# Export the vault (finds it automatically via Obsidian's vault registry)
-.\tools\sync-vault.ps1
+```bat
+:: Export the vault (finds it automatically via Obsidian's vault registry)
+tools\sync-vault.cmd
 
-# Export, then commit and push so the live site updates
-.\tools\sync-vault.ps1 -Publish
+:: Export, then commit and push so the live site updates
+tools\sync-vault.cmd --publish
 
-# Re-export automatically whenever a note is saved in Obsidian
-.\tools\sync-vault.ps1 -Watch
+:: Re-export automatically whenever a note is saved in Obsidian
+tools\sync-vault.cmd --watch
 
-# Point at a different vault
-.\tools\sync-vault.ps1 -Vault "D:\Notes\NavalVault"
+:: Point at a different vault
+tools\sync-vault.cmd --vault "D:\Notes\NavalVault"
 ```
+
+`sync-vault.cmd` works regardless of PowerShell's execution policy. If you prefer PowerShell
+and local scripts are blocked, run it as:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\sync-vault.ps1 -Publish
+```
+
+The export is idempotent: if no note changed, `vault-data.js` is left alone and nothing is
+committed.
 
 What gets exported per note: title, folder, tags, `updated` date, excerpt, full Markdown body,
 resolved wikilinks, and backlinks. `.obsidian/`, `.git/`, and other dot-folders are skipped.
@@ -101,8 +111,9 @@ data.js         seed project state
 app.js          rendering, editing, persistence, import/export, Markdown renderer
 vault-data.js   generated vault export (do not edit by hand)
 tools/
-  sync-vault.mjs   Obsidian vault → vault-data.js exporter
-  sync-vault.ps1   wrapper: -Watch, -Publish, -Vault
+  sync-vault.cmd   wrapper: works without execution-policy changes
+  sync-vault.ps1   PowerShell wrapper (thin)
+  sync-vault.mjs   Obsidian vault → vault-data.js exporter, publisher, watcher
 ```
 
 ## Deploying

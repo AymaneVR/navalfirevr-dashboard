@@ -479,6 +479,13 @@ function render() {
 
   const page = document.getElementById("page");
   page.innerHTML = VIEWS[currentRoute]();
+
+  if (routeChanged) {
+    page.classList.remove("is-entering");
+    void page.offsetWidth;
+    page.classList.add("is-entering");
+  }
+
   document.title = `${route.title} — NavalFireVR`;
 
   syncNav();
@@ -2295,6 +2302,22 @@ window.addEventListener("hashchange", () => {
   currentSlug = parsed.slug;
   render();
 });
+
+/* Compact the sticky header once the page moves. */
+let scrollTicking = false;
+
+window.addEventListener(
+  "scroll",
+  () => {
+    if (scrollTicking) return;
+    scrollTicking = true;
+    window.requestAnimationFrame(() => {
+      document.body.classList.toggle("is-scrolled", window.scrollY > 8);
+      scrollTicking = false;
+    });
+  },
+  { passive: true }
+);
 
 /* ------------------------------------------------------------------ */
 /* Boot                                                                */

@@ -467,6 +467,73 @@ function syncNav() {
 }
 
 let lastRenderedRoute = null;
+let forceReveal = false;
+let revealObserver = null;
+
+/* Scroll-reveal: fade + rise, staggered, one-shot. Skipped under
+   prefers-reduced-motion and when IntersectionObserver is unavailable. */
+function decorateReveal(page) {
+  const reduced =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduced || !("IntersectionObserver" in window)) return;
+
+  const targets = page.querySelectorAll(
+    "section.card, article.card, .kpi, .locker-card, .shot, .kcol, .grp, .phase, .vault-list, .vault-reader, .ms-card"
+  );
+  if (!targets.length) return;
+
+  if (!revealObserver) {
+    revealObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-seen");
+            revealObserver.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.08, rootMargin: "0px 0px -40px 0px" }
+    );
+  }
+
+  const viewportHeight = window.innerHeight || 800;
+  targets.forEach((el, index) => {
+    el.setAttribute("data-reveal", "");
+    el.style.setProperty("--rd", `${Math.min(index * 45, 420)}ms`);
+    if (el.getBoundingClientRect().top < viewportHeight * 0.9) {
+      el.classList.add("is-seen");
+    } else {
+      revealObserver.observe(el);
+    }
+  });
+}
+
+/* Count up the leading integer in each .kpi-num on first view. */
+function animateNumbers(root) {
+  const reduced =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduced) return;
+
+  root.querySelectorAll(".kpi-num").forEach((el) => {
+    const match = el.textContent.match(/-?\d+/);
+    if (!match || !el.firstChild) return;
+    const target = parseInt(match[0], 10);
+    if (target === 0) { el.firstChild.nodeValue = "0"; return; }
+    const duration = 640;
+    const start = performance.now();
+    const ticker = setInterval(() => {
+      const progress = Math.min((performance.now() - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      el.firstChild.nodeValue = String(Math.round(target * eased));
+      if (progress >= 1) {
+        el.firstChild.nodeValue = String(target);
+        clearInterval(ticker);
+      }
+    }, 32);
+  });
+}
 
 function render() {
   const routeChanged = lastRenderedRoute !== currentRoute;
@@ -485,6 +552,11 @@ function render() {
     void page.offsetWidth;
     page.classList.add("is-entering");
   }
+
+  if (routeChanged || forceReveal) decorateReveal(page);
+  forceReveal = false;
+
+  if (routeChanged && currentRoute === "overview") animateNumbers(page);
 
   document.title = `${route.title} — NavalFireVR`;
 
@@ -2157,6 +2229,7 @@ document.addEventListener("click", (event) => {
     cycleMatrix(target.dataset.role, target.dataset.class);
   } else if (act === "gallery-tag") {
     galleryTag = target.dataset.tag;
+    forceReveal = true;
     render();
   } else if (act === "shot-open") {
     lightboxIndex = Number(target.dataset.index);
